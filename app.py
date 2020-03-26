@@ -2,19 +2,24 @@ from flask import Flask
 from flask import jsonify
 from flask import request
 from flask import Response
+from flask import send_from_directory
 from flask_cors import CORS, cross_origin
 from dbUserFunctions import dbAddUser, dbGetUsers, dbUserLogin
-from dbQuestionFunctions import dbGetQuestions, dbGetQuestionsByTag
+from dbQuestionFunctions import dbGetQuestions, dbGetQuestionsByTag, dbAddQuestion
 from dbTagFunctions import dbGetTags
+import os
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='client/build')
 CORS(app)
 
-
-@app.route('/', methods=['GET'])
-def hello():
-    response = jsonify({'some': 'data'})
-    return response
+# Serve React App
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    if path != "" and os.path.exists(app.static_folder + '/' + path):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 
 @app.route('/addUser', methods = ['POST'])
@@ -57,6 +62,17 @@ def getQuestions():
 def getQuestionsByTag(tag):
     questions = dbGetQuestionsByTag(tag)
     resp = Response(questions)
+    return resp
+
+
+@app.route('/addQuestion', methods = ['POST'])
+@cross_origin()
+def addQuestion():
+    content = request.get_json()
+    mylist = list(map(lambda each:each.strip(), list(content["tags"])))
+    print(mylist)
+    dbAddQuestion(content["title"], content["body"], mylist)
+    resp = Response("True")
     return resp
 
 
